@@ -6,17 +6,20 @@ class Command
 {
 	private $connection;
 	private $command;
+	private $output;
+	private $error;
+	private $exit;
 
 	private $successCallback;
 	private $failureCallback;
 
-	public function __construct(Connection $connection, $command)
+	public function __construct(Connection $connection, $command, $success = null, $failure = null)
 	{
 		$this->connection = $connection;
 		$this->command = $command;
 
-		$this->successCallback = function() {};
-		$this->failureCallback = function($error) {};
+		$this->successCallback = $success ?: function() {};
+		$this->failureCallback = $failure ?: function() {};
 	}
 
 	public function success(Callable $callback)
@@ -35,30 +38,58 @@ class Command
 
 	public function run()
 	{
+		$this->exit = 0;
+		$this->error = '';
+
 		$connection = $this->getConnection();
 
 		$connection->enableQuietMode();
-		$output = trim($connection->exec($this->command));
+		$this->output = trim($connection->exec($this->command));
 		$connection->disableQuietMode();
 
-		$exitCode = $connection->getExitStatus();
+		$this->exit = $connection->getExitStatus();
+		$this->error = $connection->getStdError();
 
-		if($exitCode == 0)
+//		var_dump([
+//			'command' => $this->command,
+//			'output' => $this->output,
+//			'exit' => $this->exit,
+//			'error' => $this->error
+//		]);
+
+		if($this->error == '')
 		{
 			$callback = $this->successCallback;
 
-			return $callback($output, $exitCode);
+			$callback($this->output, $this->exit);
 		}
 		else
 		{
 			$callback = $this->failureCallback;
 
-			return $callback($output, $exitCode, $connection->getStdError());
+			$callback($this->output, $this->exit, $this->error);
 		}
+
+		return $this;
 	}
 
 	private function getConnection()
 	{
 		return $this->connection->getConnection();
+	}
+
+	public function getOutput()
+	{
+		return $this->output;
+	}
+
+	public function getExitCode()
+	{
+		return $this->exit;
+	}
+
+	public function getError()
+	{
+		return $this->error;
 	}
 }

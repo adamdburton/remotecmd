@@ -4,18 +4,20 @@ namespace AdamDBurton\RemoteCmd;
 
 class Task
 {
-	private $conditionalCallback;
+	private $conditionalCommand;
+
 	private $thenCallback;
 	private $elseCallback;
+	private $failureCallback;
 
 	public function __construct(Connection $connection)
 	{
 		$this->connection = $connection;
 	}
 
-	public function if($conditionalCallback)
+	public function if($conditionalCommand)
 	{
-		$this->conditionalCallback = $conditionalCallback;
+		$this->conditionalCommand = $conditionalCommand;
 
 		return $this;
 	}
@@ -34,20 +36,36 @@ class Task
 		return $this;
 	}
 
+	public function failure($failureCallback)
+	{
+		$this->failureCallback = $failureCallback;
+
+		return $this;
+	}
+
 	public function run()
 	{
-		$success = $this->thenCallback;
-		$failure = $this->elseCallback;
+		$then = $this->thenCallback;
+		$else = $this->elseCallback;
+		$failure = $this->failureCallback;
 
 		$this->connection
-			->command($this->conditionalCallback)
-			->success(function() use ($success)
+			->command($this->conditionalCommand)
+			->success(function($output, $exitCode) use ($then, $else)
 			{
-				$success($this->connection->task());
+				if($exitCode == 0)
+				{
+					$then($this->connection);
+				}
+				else
+				{
+					$else($this->connection);
+				}
 			})
-			 	->failure(function() use ($failure)
+			->failure(function($output, $exitCode, $error) use ($failure)
 			{
-				$failure($this->connection->task());
-			});
+				$failure($this->connection, $output, $exitCode, $error);
+			})
+			->run();
 	}
 }

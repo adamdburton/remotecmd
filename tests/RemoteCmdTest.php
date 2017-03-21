@@ -20,7 +20,7 @@ class RemoteCmdTest extends TestCase
 
 	protected function tearDown()
 	{
-		var_dump($this->connection->getLog());
+		//var_dump($this->connection->getLog());
 	}
 
 	protected function assertPreConditions()
@@ -37,7 +37,30 @@ class RemoteCmdTest extends TestCase
 		})->failure(function($output)
 		{
 			$this->fail('Command `whoami` failed to be executed');
-		});
+		})->run();
+	}
+
+	public function testCanRunTask()
+	{
+		$this->connection->task()
+			->if('test -f test.txt')
+			->then(function(Connection $connection)
+			{
+				$connection->command('rm test.txt')->run();
+
+				$this->assertFalse($connection->fileExists('test.txt'), 'File text.txt exists');
+			})
+			->else(function(Connection $connection)
+			{
+				$connection->command('touch test.txt')->run();
+
+				$this->assertTrue($connection->fileExists('test.txt'), 'File text.txt does not exist');
+			})
+			->failure(function(Connection $connection, $output, $exitCode, $error)
+			{
+				$this->fail('Command error: ' . $error);
+			})
+			->run();
 	}
 
 }

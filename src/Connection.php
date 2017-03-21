@@ -6,14 +6,14 @@ use AdamDBurton\RemoteCmd\Exceptions\AuthenticationException;
 use phpseclib\Crypt\RSA;
 use phpseclib\Net\SSH2;
 
+define('NET_SSH2_LOGGING', SSH2::LOG_SIMPLE);
+
 class Connection
 {
 	private $connection;
 
 	public function __construct($host, $port = 22, $timeout = 5)
 	{
-		define('NET_SSH2_LOGGING', SSH2::LOG_SIMPLE);
-
 		$this->connection = new SSH2($host, $port, $timeout);
 	}
 
@@ -50,14 +50,28 @@ class Connection
 		return $this;
 	}
 
-	public function command($command)
+	public function command($command, $success = null, $failure = null)
 	{
-		return new Command($this, $command);
+		return new Command($this, $command, $success, $failure);
 	}
 
 	public function task()
 	{
 		return new Task($this);
+	}
+
+	public function fileExists($filename)
+	{
+		$command = $this->command(sprintf('test -f %s', $filename))->run();
+
+		return $command->getExitCode() == 0;
+	}
+
+	public function directoryExists($directory)
+	{
+		$command = $this->command(sprintf('test -d %s', $directory))->run();
+
+		return $command->getExitCode() == 0;
 	}
 
 	public function getConnection()
