@@ -2,6 +2,8 @@
 
 namespace AdamDBurton\RemoteCmd;
 
+use AdamDBurton\RemoteCmd\Exceptions\CommandException;
+
 class Command
 {
 	private $connection;
@@ -13,13 +15,13 @@ class Command
 	private $successCallback;
 	private $failureCallback;
 
-	public function __construct(Connection $connection, $command, $success = null, $failure = null)
+	public function __construct(Connection $connection, $command, Callable $success = null, Callable $failure = null)
 	{
 		$this->connection = $connection;
 		$this->command = $command;
 
 		$this->successCallback = $success ?: function() {};
-		$this->failureCallback = $failure ?: function() {};
+		$this->failureCallback = $failure ?: function($output, $exitCode, $error) { throw new CommandException($error, $exitCode); };
 	}
 
 	public function success(Callable $callback)
