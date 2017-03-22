@@ -12,8 +12,14 @@ class Connection
 {
 	private $connection;
 
-	const FILE_EXISTS_COMMAND = 'test -f %s';
-	const DIRECTORY_EXISTS_COMMAND = 'test -d %s';
+	const FILE_EXISTS_COMMAND = 'test -f "%s"';
+	const DIRECTORY_EXISTS_COMMAND = 'test -d "%s"';
+
+	const READ_FILE_COMMAND = 'cat "%s"';
+	const WRITE_FILE_COMMAND = 'echo $\'%s\' > "%s"';
+
+	const CREATE_DIRECTORY_COMMAND = 'mkdir "%s"';
+	const CREATE_DIRECTORY_FORCE_COMMAND = 'mkdir -p "%s"';
 
 	public function __construct($host, $port = 22, $timeout = 10)
 	{
@@ -70,9 +76,35 @@ class Connection
 		return $command->getExitCode() == 0;
 	}
 
+	public function readFile($filename)
+	{
+		$command = $this->command(sprintf(self::READ_FILE_COMMAND, $filename))->run();
+
+		return $command->getOutput();
+	}
+
+	public function writeFile($filename, $content, $force = false)
+	{
+		if(!$this->directoryExists(dirname($filename)))
+		{
+			$this->createDirectory(dirname($filename), $force);
+		}
+
+		$command = $this->command(sprintf(self::WRITE_FILE_COMMAND, $content, $filename))->run();
+
+		return $command->getExitCode() == 0;
+	}
+
 	public function directoryExists($directory)
 	{
 		$command = $this->command(sprintf(self::DIRECTORY_EXISTS_COMMAND, $directory))->run();
+
+		return $command->getExitCode() == 0;
+	}
+
+	public function createDirectory($directory, $force = false)
+	{
+		$command = $this->command(sprintf($force ? self::CREATE_DIRECTORY_FORCE_COMMAND : self::CREATE_DIRECTORY_COMMAND, $directory))->run();
 
 		return $command->getExitCode() == 0;
 	}

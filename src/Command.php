@@ -38,16 +38,9 @@ class Command
 		return $this;
 	}
 
-	public function runAsSudo($password)
-	{
-		$this->command = sprintf('echo %s | sudo -S %s', $password, $this->command);
-
-		return $this->run();
-	}
-
 	public function run()
 	{
-		echo sprintf('Running "%s" on "%s"', $this->command, $this->connection->getConnection()->host) . PHP_EOL;
+		//echo sprintf('Running \'%s\' on \'%s\'', $this->command, $this->connection->getConnection()->host) . PHP_EOL;
 
 		$this->exit = 0;
 		$this->error = '';
@@ -61,12 +54,12 @@ class Command
 		$this->exit = $connection->getExitStatus();
 		$this->error = $connection->getStdError();
 
-//		var_dump([
-//			'command' => $this->command,
-//			'output' => $this->output,
-//			'exit' => $this->exit,
-//			'error' => $this->error
-//		]);
+		var_dump([
+			'command' => $this->command,
+			'output' => $this->output,
+			'exit' => $this->exit,
+			'error' => $this->error
+		]);
 
 		if($this->error == '')
 		{
@@ -82,6 +75,13 @@ class Command
 		}
 
 		return $this;
+	}
+
+	public function runAsSudo($password)
+	{
+		$this->command = sprintf('echo "%s" | sudo -S "%s"', $password, $this->command);
+
+		return $this->run();
 	}
 
 	private function getConnection()

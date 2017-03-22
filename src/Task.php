@@ -59,11 +59,25 @@ class Task
 
 	public function run()
 	{
+		$command = $this->getConnection();
+
+		return $command->run();
+	}
+
+	public function runAsSudo($password)
+	{
+		$command = $this->getConnection();
+
+		return $command->runAsSudo($password);
+	}
+
+	private function getConnection()
+	{
 		$then = $this->thenCallback;
 		$else = $this->elseCallback;
 		$failure = $this->failureCallback;
 
-		$this->connection
+		return $this->connection
 			->command($this->conditionalCommand)
 			->success(function($output, $exitCode) use ($then, $else)
 			{
@@ -79,7 +93,6 @@ class Task
 			->failure(function($output, $exitCode, $error) use ($failure)
 			{
 				$failure($this->connection, $output, $exitCode, $error);
-			})
-			->run();
+			});
 	}
 }

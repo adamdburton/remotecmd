@@ -39,10 +39,10 @@ class RemoteCmdTest extends TestCase
 			->run();
 	}
 
-	public function testCanRunSudoCommand()
-	{
-		$this->connection->command('touch sudo.txt')->runAsSudo(getenv('SSH_PASSWORD'));
-	}
+//	public function testCanRunSudoCommand()
+//	{
+//		$this->connection->command('touch sudo.txt')->runAsSudo(getenv('SSH_PASSWORD'));
+//	}
 
 	public function testCanRunTask()
 	{
@@ -61,6 +61,28 @@ class RemoteCmdTest extends TestCase
 				$this->assertTrue($connection->fileExists('test.txt'), 'File test.txt does not exist');
 			})
 			->run();
+	}
+
+	public function testCanReadFile()
+	{
+		$this->connection->command('echo "readFile" > "test.txt"')->run();
+
+		$content = $this->connection->readFile('test.txt');
+
+		$this->assertTrue($content == 'readFile', 'File content does not match readFile');
+
+		$this->connection->command('rm -f test.txt')->run();
+	}
+
+	public function testCanWriteFile()
+	{
+		$this->connection->writeFile('test.txt', 'writeFile');
+
+		$content = $this->connection->command('cat "test.txt"')->run()->getOutput();
+
+		$this->assertTrue($content == 'writeFile', 'File content does not match writeFile');
+
+		$this->connection->command('rm -f test.txt')->run();
 	}
 
 }
