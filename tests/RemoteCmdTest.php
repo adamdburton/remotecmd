@@ -31,19 +31,23 @@ class RemoteCmdTest extends TestCase
 
 	public function testCanRunCommand()
 	{
-		$this->connection->command('whoami')->success(function($output)
-		{
-			$this->assertTrue($output == getenv('SSH_USERNAME'), 'Command `whoami` output is not equal to ' . getenv('SSH_USERNAME'));
-		})->failure(function($output)
-		{
-			$this->fail('Command `whoami` failed to be executed');
-		})->run();
+		$this->connection->command('whoami')
+			->success(function($output)
+			{
+				$this->assertTrue($output == getenv('SSH_USERNAME'), 'Command `whoami` output is not equal to ' . getenv('SSH_USERNAME'));
+			})
+			->run();
+	}
+
+	public function testCanRunSudoCommand()
+	{
+		$this->connection->command('touch sudo.txt')->runAsSudo(getenv('SSH_PASSWORD'));
 	}
 
 	public function testCanRunTask()
 	{
 		$this->connection->task()
-			->if('test -f test.txt')
+			->ifFileExists('test.txt')
 			->then(function(Connection $connection)
 			{
 				$connection->command('rm test.txt')->run();
@@ -54,11 +58,7 @@ class RemoteCmdTest extends TestCase
 			{
 				$connection->command('touch test.txt')->run();
 
-				$this->assertTrue($connection->fileExists('test.txt'), 'File text.txt does not exist');
-			})
-			->failure(function(Connection $connection, $output, $exitCode, $error)
-			{
-				$this->fail('Command error: ' . $error);
+				$this->assertTrue($connection->fileExists('test.txt'), 'File test.txt does not exist');
 			})
 			->run();
 	}

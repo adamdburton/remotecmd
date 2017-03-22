@@ -15,13 +15,13 @@ class Command
 	private $successCallback;
 	private $failureCallback;
 
-	public function __construct(Connection $connection, $command, Callable $success = null, Callable $failure = null)
+	public function __construct(Connection $connection, $command)
 	{
 		$this->connection = $connection;
 		$this->command = $command;
 
-		$this->successCallback = $success ?: function() {};
-		$this->failureCallback = $failure ?: function($output, $exitCode, $error) { throw new CommandException($error, $exitCode); };
+		$this->successCallback = function() {};
+		$this->failureCallback = function($output, $exitCode, $error) { throw new CommandException($error, $exitCode); };
 	}
 
 	public function success(Callable $callback)
@@ -38,8 +38,17 @@ class Command
 		return $this;
 	}
 
+	public function runAsSudo($password)
+	{
+		$this->command = sprintf('echo %s | sudo -S %s', $password, $this->command);
+
+		return $this->run();
+	}
+
 	public function run()
 	{
+		echo sprintf('Running "%s" on "%s"', $this->command, $this->connection->getConnection()->host) . PHP_EOL;
+
 		$this->exit = 0;
 		$this->error = '';
 

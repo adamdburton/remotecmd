@@ -22,6 +22,20 @@ class Task
 		return $this;
 	}
 
+	public function ifFileExists($filename)
+	{
+		$this->conditionalCommand = sprintf(Connection::FILE_EXISTS_COMMAND, $filename);
+
+		return $this;
+	}
+
+	public function ifDirectoryExists($directory)
+	{
+		$this->conditionalCommand = sprintf(Connection::DIRECTORY_EXISTS_COMMAND, $directory);
+
+		return $this;
+	}
+
 	public function then($thenCallback)
 	{
 		$this->thenCallback = $thenCallback;

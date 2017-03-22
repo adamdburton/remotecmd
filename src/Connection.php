@@ -12,7 +12,10 @@ class Connection
 {
 	private $connection;
 
-	public function __construct($host, $port = 22, $timeout = 5)
+	const FILE_EXISTS_COMMAND = 'test -f %s';
+	const DIRECTORY_EXISTS_COMMAND = 'test -d %s';
+
+	public function __construct($host, $port = 22, $timeout = 10)
 	{
 		$this->connection = new SSH2($host, $port, $timeout);
 	}
@@ -50,9 +53,9 @@ class Connection
 		return $this;
 	}
 
-	public function command($command, $success = null, $failure = null)
+	public function command($command)
 	{
-		return new Command($this, $command, $success, $failure);
+		return new Command($this, $command);
 	}
 
 	public function task()
@@ -62,14 +65,14 @@ class Connection
 
 	public function fileExists($filename)
 	{
-		$command = $this->command(sprintf('test -f %s', $filename))->run();
+		$command = $this->command(sprintf(self::FILE_EXISTS_COMMAND, $filename))->run();
 
 		return $command->getExitCode() == 0;
 	}
 
 	public function directoryExists($directory)
 	{
-		$command = $this->command(sprintf('test -d %s', $directory))->run();
+		$command = $this->command(sprintf(self::DIRECTORY_EXISTS_COMMAND, $directory))->run();
 
 		return $command->getExitCode() == 0;
 	}
