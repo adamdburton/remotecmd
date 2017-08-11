@@ -1,4 +1,6 @@
 {
+    "name": "adamdburton/remotecmd",
+    "description": "Runs commands and tasks over SSH.",
     "require": {
         "php/php": "7.*",
         "phpseclib/phpseclib": "^2.0"
