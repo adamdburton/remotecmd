@@ -3,6 +3,7 @@
 namespace AdamDBurton\RemoteCmd;
 
 use AdamDBurton\RemoteCmd\Exceptions\AuthenticationException;
+use AdamDBurton\RemoteCmd\Exceptions\ConnectionException;
 use phpseclib\Crypt\RSA;
 use phpseclib\Net\SSH2;
 
@@ -24,6 +25,11 @@ class Connection
 	public function __construct($host, $port = 22, $timeout = 10)
 	{
 		$this->connection = new SSH2($host, $port, $timeout);
+
+		if(!$this->connection->isConnected())
+		{
+			throw new ConnectionException($this->connection->getLastError());
+		}
 	}
 
 	public function authWithPassword($username, $password)
