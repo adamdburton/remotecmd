@@ -26,17 +26,17 @@ class Connection
 	{
 		$this->connection = new SSH2($host, $port, $timeout);
 
-		if(!$this->connection->isConnected())
-		{
-			throw new ConnectionException($this->connection->getLastError());
-		}
+//		if(!$this->connection->isConnected())
+//		{
+//			throw new ConnectionException($this->connection->getLastError());
+//		}
 	}
 
 	public function authWithPassword($username, $password)
 	{
-		$loggedIn = $this->connection->login($username, $password);
+		$authenticated = $this->connection->login($username, $password);
 
-		if(!$loggedIn)
+		if(!$authenticated)
 		{
 			throw new AuthenticationException($this->connection->getLastError());
 		}
@@ -55,9 +55,9 @@ class Connection
 
 		$key->loadKey($keyString);
 
-		$loggedIn = $this->connection->login($username, $key);
+		$authenticated = $this->connection->login($username, $key);
 
-		if(!$loggedIn)
+		if(!$authenticated)
 		{
 			throw new AuthenticationException($this->connection->getLastError());
 		}
