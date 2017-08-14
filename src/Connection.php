@@ -80,7 +80,7 @@ class Connection
 		return $command->getExitCode() == 0;
 	}
 
-	public function readFile($filename)
+	public function readFile($filename, $destination)
 	{
 		$scp = new SCP($this->connection);
 		$scp->get($filename, $destination);
