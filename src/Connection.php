@@ -7,7 +7,7 @@ use AdamDBurton\RemoteCmd\Exceptions\ConnectionException;
 use phpseclib\Crypt\RSA;
 use phpseclib\Net\SSH2;
 
-define('NET_SSH2_LOGGING', SSH2::LOG_SIMPLE);
+//define('NET_SSH2_LOGGING', SSH2::LOG_SIMPLE);
 
 class Connection
 {

@@ -54,12 +54,12 @@ class Command
 		$this->exit = $connection->getExitStatus();
 		$this->error = $connection->getStdError();
 
-		var_dump([
-			'command' => $this->command,
-			'output' => $this->output,
-			'exit' => $this->exit,
-			'error' => $this->error
-		]);
+//		var_dump([
+//			'command' => $this->command,
+//			'output' => $this->output,
+//			'exit' => $this->exit,
+//			'error' => $this->error
+//		]);
 
 		if($this->error == '')
 		{
