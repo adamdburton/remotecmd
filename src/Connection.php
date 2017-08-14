@@ -5,6 +5,7 @@ namespace AdamDBurton\RemoteCmd;
 use AdamDBurton\RemoteCmd\Exceptions\AuthenticationException;
 use AdamDBurton\RemoteCmd\Exceptions\ConnectionException;
 use phpseclib\Crypt\RSA;
+use phpseclib\Net\SCP;
 use phpseclib\Net\SSH2;
 
 //define('NET_SSH2_LOGGING', SSH2::LOG_SIMPLE);
@@ -15,9 +16,6 @@ class Connection
 
 	const FILE_EXISTS_COMMAND = 'test -f "%s"';
 	const DIRECTORY_EXISTS_COMMAND = 'test -d "%s"';
-
-	const READ_FILE_COMMAND = 'cat "%s"';
-	const WRITE_FILE_COMMAND = 'echo $\'%s\' > "%s"';
 
 	const CREATE_DIRECTORY_COMMAND = 'mkdir "%s"';
 	const CREATE_DIRECTORY_FORCE_COMMAND = 'mkdir -p "%s"';
@@ -84,9 +82,8 @@ class Connection
 
 	public function readFile($filename)
 	{
-		$command = $this->command(sprintf(self::READ_FILE_COMMAND, $filename))->run();
-
-		return $command->getOutput();
+		$scp = new SCP($this->connection);
+		$scp->get($filename, $destination);
 	}
 
 	public function writeFile($filename, $content, $force = false)
@@ -96,9 +93,8 @@ class Connection
 			$this->createDirectory(dirname($filename), $force);
 		}
 
-		$command = $this->command(sprintf(self::WRITE_FILE_COMMAND, $content, $filename))->run();
-
-		return $command->getExitCode() == 0;
+		$scp = new SCP($this->connection);
+		$scp->put($filename, $content);
 	}
 
 	public function directoryExists($directory)
