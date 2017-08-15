@@ -23,11 +23,11 @@ class Connection
 	public function __construct($host, $port = 22, $timeout = 10)
 	{
 		$this->connection = new SSH2($host, $port, $timeout);
+	}
 
-//		if(!$this->connection->isConnected())
-//		{
-//			throw new ConnectionException($this->connection->getLastError());
-//		}
+	public function disconnect()
+	{
+		$this->connection->disconnect();
 	}
 
 	public function authWithPassword($username, $password)
