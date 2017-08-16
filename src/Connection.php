@@ -13,23 +13,26 @@ use phpseclib\Net\SSH2;
 class Connection
 {
 	private $connection;
-	private $scpConnection;
 
-	const FILE_EXISTS_COMMAND = 'test -f "%s"';
-	const DIRECTORY_EXISTS_COMMAND = 'test -d "%s"';
+	const FILE_EXISTS_COMMAND = 'test -f %s';
+	const DIRECTORY_EXISTS_COMMAND = 'test -d %s';
 
-	const CREATE_DIRECTORY_COMMAND = 'mkdir "%s"';
-	const CREATE_DIRECTORY_FORCE_COMMAND = 'mkdir -p "%s"';
+	const CREATE_DIRECTORY_COMMAND = 'mkdir %s';
+	const CREATE_DIRECTORY_FORCE_COMMAND = 'mkdir -p %s';
 
 	public function __construct($host, $port = 22, $timeout = 10)
 	{
 		$this->connection = new SSH2($host, $port, $timeout);
-		$this->scpConnection = new SCP(new SSH2($host, $port, $timeout));
 	}
 
 	public function disconnect()
 	{
 		$this->connection->disconnect();
+	}
+
+	public function reset()
+	{
+		$this->connection->reset();
 	}
 
 	public function authWithPassword($username, $password)
@@ -84,7 +87,12 @@ class Connection
 
 	public function readFile($filename, $destination)
 	{
-		$this->scpConnection->get($filename, $destination);
+		$scp = new SCP($this->connection);
+		$scp->get($filename, $destination);
+
+		//$this->connection->reset();
+
+		return $this;
 	}
 
 	public function writeFile($filename, $content, $force = false)
@@ -94,7 +102,12 @@ class Connection
 			$this->createDirectory(dirname($filename), $force);
 		}
 
-		$this->scpConnection->put($filename, $content);
+		$scp = new SCP($this->connection);
+		$scp->put($filename, $content, SCP::SOURCE_LOCAL_FILE);
+
+		//$this->connection->reset();
+
+		return $this;
 	}
 
 	public function directoryExists($directory)
