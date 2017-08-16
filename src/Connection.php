@@ -13,6 +13,7 @@ use phpseclib\Net\SSH2;
 class Connection
 {
 	private $connection;
+	private $scpConnection;
 
 	const FILE_EXISTS_COMMAND = 'test -f "%s"';
 	const DIRECTORY_EXISTS_COMMAND = 'test -d "%s"';
@@ -23,6 +24,7 @@ class Connection
 	public function __construct($host, $port = 22, $timeout = 10)
 	{
 		$this->connection = new SSH2($host, $port, $timeout);
+		$this->scpConnection = new SCP(new SSH2($host, $port, $timeout));
 	}
 
 	public function disconnect()
@@ -82,8 +84,7 @@ class Connection
 
 	public function readFile($filename, $destination)
 	{
-		$scp = new SCP($this->connection);
-		$scp->get($filename, $destination);
+		$this->scpConnection->get($filename, $destination);
 	}
 
 	public function writeFile($filename, $content, $force = false)
@@ -93,8 +94,7 @@ class Connection
 			$this->createDirectory(dirname($filename), $force);
 		}
 
-		$scp = new SCP($this->connection);
-		$scp->put($filename, $content);
+		$this->scpConnection->put($filename, $content);
 	}
 
 	public function directoryExists($directory)
