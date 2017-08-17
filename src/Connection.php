@@ -20,6 +20,8 @@ class Connection
 	const CREATE_DIRECTORY_COMMAND = 'mkdir %s';
 	const CREATE_DIRECTORY_FORCE_COMMAND = 'mkdir -p %s';
 
+	const LIST_DIRECTORY_COMMAND = 'ls -l --almost-all %s';
+
 	public function __construct($host, $port = 22, $timeout = 10)
 	{
 		$this->connection = new SSH2($host, $port, $timeout);
@@ -122,6 +124,22 @@ class Connection
 		$command = $this->command(sprintf($force ? self::CREATE_DIRECTORY_FORCE_COMMAND : self::CREATE_DIRECTORY_COMMAND, $directory))->run();
 
 		return $command->getExitCode() == 0;
+	}
+
+	public function listDirectory($directory)
+	{
+		$command = $this->command(sprintf(self::LIST_DIRECTORY_COMMAND, $directory))->run();
+
+		preg_match_all('/(?<permissions>[drwx\-@]+)\s+(?<position>\d+)\s+(?<user>\w+)\s+(?<group>\w+)\s+(?<size>\d+)\s+(?<month>\w+)\s+(?<day>\d+)\s+(?<yearortime>\d+:?\d+)\s+(?<filename>.*)/', $command->getOutput(), $matches, PREG_SET_ORDER);
+
+		$list = [];
+
+		foreach($matches as $match)
+		{
+			$list[] = array_intersect_key($match, array_flip(array_filter(array_keys($match), 'ctype_alpha')));
+		}
+
+		return $list;
 	}
 
 	public function getConnection()
