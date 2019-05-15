@@ -6,101 +6,144 @@ use AdamDBurton\RemoteCmd\Exceptions\CommandException;
 
 class Command
 {
-	private $connection;
-	private $command;
-	private $output;
-	private $error;
-	private $exit;
+    private $connection;
+    private $command;
+    private $output;
+    private $error;
+    private $exitCode;
 
-	private $successCallback;
-	private $failureCallback;
+    private $successCallback;
+    private $failureCallback;
 
-	public function __construct(Connection $connection, $command)
-	{
-		$this->connection = $connection;
-		$this->command = $command;
+    /**
+     * Command constructor.
+     * @param Connection $connection
+     * @param null $command
+     */
+    public function __construct(Connection $connection, $command = null)
+    {
+        $this->connection = $connection;
+        $this->command = $command;
 
-		$this->successCallback = function() {};
-		$this->failureCallback = function($output, $exitCode, $error) { throw new CommandException($error, $exitCode); };
-	}
+        $this->successCallback = function () {
+        };
+        $this->failureCallback = function ($output, $exitCode, $error) {
+            throw new CommandException($this->command, $output, $exitCode, $error);
+        };
+    }
 
-	public function success(Callable $callback)
-	{
-		$this->successCallback = $callback;
+    /**
+     * @param $commands
+     * @return $this
+     */
+    public function all($commands)
+    {
+        $this->command = implode("\n", is_array($commands) ? $commands : func_get_args());
 
-		return $this;
-	}
+        return $this;
+    }
 
-	public function failure(Callable $callback)
-	{
-		$this->failureCallback = $callback;
+    /**
+     * @param callable $callback
+     * @return $this
+     */
+    public function success(callable $callback)
+    {
+        $this->successCallback = $callback;
 
-		return $this;
-	}
+        return $this;
+    }
 
-	public function run()
-	{
-		//echo sprintf('Running \'%s\' on \'%s\'', $this->command, $this->connection->getConnection()->host) . PHP_EOL;
+    /**
+     * @param callable $callback
+     * @return $this
+     */
+    public function failure(callable $callback)
+    {
+        $this->failureCallback = $callback;
 
-		$this->exit = 0;
-		$this->error = '';
+        return $this;
+    }
 
-		$connection = $this->getConnection();
+    /**
+     * @return $this
+     */
+    public function run()
+    {
+        //echo sprintf('Running \'%s\' on \'%s\'', $this->command, $this->connection->getConnection()->host) . PHP_EOL;
 
-		$connection->enableQuietMode();
-		$this->output = trim($connection->exec($this->command));
-		$connection->disableQuietMode();
+        $this->exitCode = 0;
+        $this->error = '';
 
-		$this->exit = $connection->getExitStatus();
-		$this->error = $connection->getStdError();
+        $connection = $this->getConnection();
 
-//		var_dump([
-//			'command' => $this->command,
-//			'output' => $this->output,
-//			'exit' => $this->exit,
-//			'error' => $this->error
-//		]);
+        $connection->enableQuietMode();
+        $this->output = trim($connection->exec($this->command));
+        $connection->disableQuietMode();
 
-		if($this->error == '')
-		{
-			$callback = $this->successCallback;
+        $this->exitCode = (int)$connection->getExitStatus();
+        $this->error = $connection->getStdError();
 
-			$callback($this->output, $this->exit);
-		}
-		else
-		{
-			$callback = $this->failureCallback;
+        //		var_dump([
+        //			'command' => $this->command,
+        //			'output' => $this->output,
+        //			'exitCode' => $this->exitCode,
+        //			'error' => $this->error
+        //		]);
 
-			$callback($this->output, $this->exit, $this->error);
-		}
+        if ($this->error == '') {
+            $callback = $this->successCallback;
 
-		return $this;
-	}
+            $callback($this->output, $this->exitCode);
+        } else {
+            $callback = $this->failureCallback;
 
-	public function runAsSudo($password)
-	{
-		$this->command = sprintf('echo "%s" | sudo -S "%s"', $password, $this->command);
+            $callback($this->output, $this->exitCode, $this->error);
+        }
 
-		return $this->run();
-	}
+        return $this;
+    }
 
-	private function getConnection()
-	{
-		return $this->connection->getConnection();
-	}
+    /**
+     * @param string $password
+     * @return Command
+     */
+    public function runAsSudo($password)
+    {
+        $this->command = sprintf('echo "%s" | sudo -S "%s"', $password, $this->command);
 
-	public function getOutput()
-	{
-		return $this->output;
-	}
+        return $this->run();
+    }
 
-	public function getExitCode()
-	{
-		return $this->exit;
-	}
+    /**
+     * @return \phpseclib\Net\SSH2
+     */
+    private function getConnection()
+    {
+        return $this->connection->getConnection();
+    }
 
-	public function getError()
-	{
-		return $this->error;
-	}
+    /**
+     * @return string
+     */
+    public function getOutput()
+    {
+        return $this->output;
+    }
+
+    /**
+     * @return int
+     */
+    public function getExitCode()
+    {
+        return $this->exitCode;
+    }
+
+    /**
+     * @return string
+     */
+    public function getError()
+    {
+        return $this->error;
+    }
 }

@@ -3,7 +3,6 @@
 namespace AdamDBurton\RemoteCmd;
 
 use AdamDBurton\RemoteCmd\Exceptions\AuthenticationException;
-use AdamDBurton\RemoteCmd\Exceptions\ConnectionException;
 use phpseclib\Crypt\RSA;
 use phpseclib\Net\SCP;
 use phpseclib\Net\SSH2;
@@ -12,153 +11,233 @@ use phpseclib\Net\SSH2;
 
 class Connection
 {
-	private $connection;
+    private $connection;
+    private $scpConnection;
 
-	const FILE_EXISTS_COMMAND = 'test -f %s';
-	const DIRECTORY_EXISTS_COMMAND = 'test -d %s';
+    const FILE_EXISTS_COMMAND = 'test -f %s';
+    const DIRECTORY_EXISTS_COMMAND = 'test -d %s';
 
-	const CREATE_DIRECTORY_COMMAND = 'mkdir %s';
-	const CREATE_DIRECTORY_FORCE_COMMAND = 'mkdir -p %s';
+    const CREATE_DIRECTORY_COMMAND = 'mkdir %s';
+    const CREATE_DIRECTORY_FORCE_COMMAND = 'mkdir -p %s';
 
-	const LIST_DIRECTORY_COMMAND = 'ls -l --almost-all %s';
+    const LIST_DIRECTORY_COMMAND = 'ls -l --almost-all %s';
 
-	public function __construct($host, $port = 22, $timeout = 10)
-	{
-		$this->connection = new SSH2($host, $port, $timeout);
-	}
+    /**
+     * Connection constructor.
+     * @param string $host
+     * @param int $port
+     * @param int $timeout
+     */
+    public function __construct($host, $port = 22, $timeout = 10)
+    {
+        $this->connection = new SSH2($host, $port, $timeout);
+    }
 
-	public function disconnect()
-	{
-		$this->connection->disconnect();
-	}
+    public function scp()
+    {
+        if(!$this->scpConnection) {
+            $this->scpConnection = new SCP($this->connection);
+        }
 
-	public function reset()
-	{
-		$this->connection->reset();
-	}
+        return $this->scpConnection;
+    }
 
-	public function authWithPassword($username, $password)
-	{
-		$authenticated = $this->connection->login($username, $password);
+    public function disconnect()
+    {
+        $this->connection->disconnect();
+    }
 
-		if(!$authenticated)
-		{
-			throw new AuthenticationException($this->connection->getLastError());
-		}
+    public function reset()
+    {
+        $this->connection->reset();
+    }
 
-		return $this;
-	}
+    /**
+     * @param string $username
+     * @param string $password
+     * @return $this
+     * @throws AuthenticationException
+     */
+    public function authWithPassword($username, $password)
+    {
+        $authenticated = $this->connection->login($username, $password);
 
-	public function authWithKey($username, $keyString, $keyPassword = null)
-	{
-		$key = new RSA();
+        if (!$authenticated) {
+            throw new AuthenticationException($this->connection->getLastError());
+        }
 
-		if($keyPassword !== null)
-		{
-			$key->setPassword($keyPassword);
-		}
+        return $this;
+    }
 
-		$key->loadKey($keyString);
+    /**
+     * @param string $username
+     * @param string $keyString
+     * @param string $keyPassword
+     * @return $this
+     * @throws AuthenticationException
+     */
+    public function authWithKey($username, $keyString, $keyPassword = null)
+    {
+        $key = new RSA();
 
-		$authenticated = $this->connection->login($username, $key);
+        if ($keyPassword !== null) {
+            $key->setPassword($keyPassword);
+        }
 
-		if(!$authenticated)
-		{
-			throw new AuthenticationException($this->connection->getLastError());
-		}
+        $key->loadKey($keyString);
 
-		return $this;
-	}
+        $authenticated = $this->connection->login($username, $key);
 
-	public function command($command)
-	{
-		return new Command($this, $command);
-	}
+        if (!$authenticated) {
+            throw new AuthenticationException($this->connection->getLastError());
+        }
 
-	public function task()
-	{
-		return new Task($this);
-	}
+        return $this;
+    }
 
-	public function fileExists($filename)
-	{
-		$command = $this->command(sprintf(self::FILE_EXISTS_COMMAND, $filename))->run();
+    /**
+     * @param string $command
+     * @return string
+     */
+    public function run($command)
+    {
+        $this->command($command)->run();
 
-		return $command->getExitCode() == 0;
-	}
+        return $this;
+    }
 
-	public function readFile($filename, $destination)
-	{
-		$scp = new SCP($this->connection);
-		$scp->get($filename, $destination);
+    /**
+     * @param string $command
+     * @return Command
+     */
+    public function command($command = null)
+    {
+        return new Command($this, $command);
+    }
 
-		//$this->connection->reset();
+    /**
+     * @return Task
+     */
+    public function task()
+    {
+        return new Task($this);
+    }
 
-		return $this;
-	}
+    /**
+     * @param string $filename
+     * @return bool
+     */
+    public function fileExists($filename)
+    {
+        $command = $this->command(sprintf(self::FILE_EXISTS_COMMAND, $filename))->run();
 
-	public function writeFile($filename, $content, $force = false)
-	{
-		if(!$this->directoryExists(dirname($filename)))
-		{
-			$this->createDirectory(dirname($filename), $force);
-		}
+        return $command->getExitCode() == 0;
+    }
 
-		$scp = new SCP($this->connection);
-		$scp->put($filename, $content, SCP::SOURCE_LOCAL_FILE);
+    /**
+     * @param string $filename
+     * @param string $destination
+     * @return $this
+     */
+    public function readFile($filename, $destination)
+    {
+        $this->scp()->get($filename, $destination);
 
-		//$this->connection->reset();
+        //$this->connection->reset();
 
-		return $this;
-	}
+        return $this;
+    }
 
-	public function directoryExists($directory)
-	{
-		$command = $this->command(sprintf(self::DIRECTORY_EXISTS_COMMAND, $directory))->run();
+    /**
+     * @param string $filename
+     * @param string $content
+     * @param bool $force
+     * @return $this
+     */
+    public function writeFile($filename, $content, $force = false)
+    {
+        if (!$this->directoryExists(dirname($filename))) {
+            $this->createDirectory(dirname($filename), $force);
+        }
 
-		return $command->getExitCode() == 0;
-	}
+        $this->scp()->put($filename, $content, SCP::SOURCE_LOCAL_FILE);
 
-	public function createDirectory($directory, $force = false)
-	{
-		$command = $this->command(sprintf($force ? self::CREATE_DIRECTORY_FORCE_COMMAND : self::CREATE_DIRECTORY_COMMAND, $directory))->run();
+        //$this->connection->reset();
 
-		return $command->getExitCode() == 0;
-	}
+        return $this;
+    }
 
-	public function listDirectory($directory)
-	{
-		$command = $this->command(sprintf(self::LIST_DIRECTORY_COMMAND, $directory))->run();
+    /**
+     * @param string $directory
+     * @return bool
+     */
+    public function directoryExists($directory)
+    {
+        $command = $this->command(sprintf(self::DIRECTORY_EXISTS_COMMAND, $directory))->run();
 
-		preg_match_all('/(?<permissions>[drwx\-@]+)\s+(?<position>\d+)\s+(?<user>\w+)\s+(?<group>\w+)\s+(?<size>\d+)\s+(?<month>\w+)\s+(?<day>\d+)\s+(?<yearortime>\d+:?\d+)\s+(?<filename>.*)/', $command->getOutput(), $matches, PREG_SET_ORDER);
+        return $command->getExitCode() == 0;
+    }
 
-		$list = [];
+    /**
+     * @param string $directory
+     * @param bool $force
+     * @return bool
+     */
+    public function createDirectory($directory, $force = false)
+    {
+        $command = $this->command(sprintf($force ? self::CREATE_DIRECTORY_FORCE_COMMAND : self::CREATE_DIRECTORY_COMMAND, $directory))->run();
 
-		foreach($matches as $match)
-		{
-			$list[] = array_intersect_key($match, array_flip(array_filter(array_keys($match), 'ctype_alpha')));
-		}
+        return $command->getExitCode() == 0;
+    }
 
-		return $list;
-	}
+    /**
+     * @param string $directory
+     * @return array
+     */
+    public function listDirectory($directory)
+    {
+        $command = $this->command(sprintf(self::LIST_DIRECTORY_COMMAND, $directory))->run();
 
-	public function getConnection()
-	{
-		return $this->connection;
-	}
+        preg_match_all('/(?<permissions>[drwx\-@]+)\s+(?<position>\d+)\s+(?<user>\w+)\s+(?<group>\w+)\s+(?<size>\d+)\s+(?<month>\w+)\s+(?<day>\d+)\s+(?<yearortime>\d+:?\d+)\s+(?<filename>.*)/', $command->getOutput(), $matches, PREG_SET_ORDER);
 
-	public function getIsConnected()
-	{
-		return $this->connection->isConnected();
-	}
+        $list = [];
 
-	public function getIsAuthenticated()
-	{
-		return $this->connection->isAuthenticated();
-	}
+        foreach ($matches as $match) {
+            $list[] = array_intersect_key($match, array_flip(array_filter(array_keys($match), 'ctype_alpha')));
+        }
 
-	public function getLog()
-	{
-		return $this->connection->getLog();
-	}
+        return $list;
+    }
+
+    /**
+     * @return SSH2
+     */
+    public function getConnection()
+    {
+        return $this->connection;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getIsConnected()
+    {
+        return $this->connection->isConnected();
+    }
+
+    /**
+     * @return bool
+     */
+    public function getIsAuthenticated()
+    {
+        return $this->connection->isAuthenticated();
+    }
+
+    /**
+     * @return array|false|string
+     */
+    public function getLog()
+    {
+        return $this->connection->getLog();
+    }
 }
